@@ -1,25 +1,29 @@
-# Build stage
-FROM container-registry.oracle.com/java/jdk:23 AS builder
+# Build stage with Eclipse Temurin JDK 23
+FROM eclipse-temurin:23-jdk-jammy AS builder
 WORKDIR /app
 
-# First copy pom.xml and download dependencies
+# Copy Maven wrapper and pom.xml first
+COPY mvnw .
+COPY .mvn .mvn
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+
+# Download dependencies
+RUN ./mvnw dependency:go-offline -B
 
 # Copy source code
 COPY src ./src
 
 # Build the application
-RUN mvn clean package -DskipTests
+RUN ./mvnw clean package -DskipTests
 
-# Runtime stage
-FROM container-registry.oracle.com/java/jre:23
+# Runtime stage with JRE 23
+FROM eclipse-temurin:23-jre-jammy
 WORKDIR /app
 
-# Copy built JAR
+# Copy built JAR from builder stage
 COPY --from=builder /app/target/gemini-chatbot.jar app.jar
 
-# Security: Run as non-root user
+# Run as non-root user for security
 RUN useradd -m appuser
 USER appuser
 
