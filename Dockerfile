@@ -1,21 +1,31 @@
-# Simplified version using Java 21 LTS
-FROM eclipse-temurin:21-jdk-jammy AS builder
+FROM eclipse-temurin:23-jdk-alpine AS builder
+
 WORKDIR /app
 
+# Copy Maven wrapper and pom.xml
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
+
+# Download dependencies
 RUN ./mvnw dependency:go-offline -B
 
-COPY src ./src
+# Copy source code
+COPY src src
+
+# Build application
 RUN ./mvnw clean package -DskipTests
 
-FROM eclipse-temurin:21-jre-jammy
+# Production image
+FROM eclipse-temurin:23-jre-alpine
+
 WORKDIR /app
+
+# Copy built JAR from builder stage
 COPY --from=builder /app/target/gemini-chatbot.jar app.jar
 
-RUN useradd -m appuser
-USER appuser
-
+# Expose application port
 EXPOSE 8080
+
+# Run application
 ENTRYPOINT ["java", "-jar", "app.jar"]
